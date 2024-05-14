@@ -5,6 +5,7 @@ werkzeug
 llama-index-llms-bedrock
 llama-index-embeddings-bedrock
 llama-index-postprocessor-rankgpt-rerank
+#llama-index-vector-stores-pinecone
 waitress
 requests
 selenium

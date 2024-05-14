@@ -1,6 +1,9 @@
+import os
 from llama_index.llms.bedrock import Bedrock
 from llama_index.embeddings.bedrock import BedrockEmbedding
-from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader, QueryBundle
+from llama_index.core import Settings, StorageContext, VectorStoreIndex, SimpleDirectoryReader, QueryBundle
+from pinecone import Pinecone
+from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core.schema import MetadataMode
 
 #from llama_index.core import PromptTemplate
@@ -8,7 +11,7 @@ from llama_index.core.prompts import PromptTemplate
 
 
 from llama_index.core.node_parser import SentenceWindowNodeParser
-#from llama_index.core.node_parser import SentenceSplitter
+from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.node_parser import JSONNodeParser
 from llama_index.core import Settings
 from llama_index.core import SimpleDirectoryReader
@@ -30,6 +33,9 @@ from flask_cors import CORS
 #logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 #logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
+pinecone_client = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+pinecone_index = pinecone_client.Index("docchat")
+
 
 # create the sentence window node parser w/ default settings
 node_parser = SentenceWindowNodeParser.from_defaults(
@@ -50,16 +56,35 @@ llm = Bedrock(
 #batch size=1000 takes 5 minutes 30 seconds to start
 embed_model = BedrockEmbedding(
     #model = "amazon.titan-embed-text-v1",
-    model = "amazon.titan-embed-image-v1",
+    model = "cohere.embed-english-v3",
     )
 Settings.llm =llm
 Settings.embed_model = embed_model
-Settings.node_parser = JSONNodeParser()
+Settings.node_parser = SentenceSplitter(chunk_size=200, chunk_overlap=10)
+#JSONNodeParser()
 #SentenceSplitter(chunk_size=200, chunk_overlap=10)
 
+#JSONNodeParser()
+#Settings.chunk_size = 512
+#
 documents = SimpleDirectoryReader("htmlpages/knowledge/", recursive=True).load_data()
 
 # Transform chunks into numerical vectors using the embedding model
+#index = VectorStoreIndex.from_documents(documents)
+# Create a PineconeVectorStore using the specified pinecone_index
+vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
+
+# Create a StorageContext using the created PineconeVectorStore
+storage_context = StorageContext.from_defaults(
+    vector_store=vector_store
+)
+
+# Use the chunks of documents and the storage_context to create the index
+#index = VectorStoreIndex.from_documents(
+#    documents, 
+#    storage_context=storage_context
+#)
+
 index = VectorStoreIndex.from_documents(documents)
 retriever = index.as_retriever(similarity_top_k=5, verbose=True)
 
