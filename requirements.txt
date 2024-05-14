@@ -1,0 +1,12 @@
+# requriements.txt
+llama-index
+llama_index
+werkzeug
+llama-index-llms-bedrock
+llama-index-embeddings-bedrock
+llama-index-postprocessor-rankgpt-rerank
+waitress
+requests
+selenium
+pandas
+flask-cors
