@@ -1,6 +1,7 @@
 import os
 import codecs
 import json
+import base64 
 
 import time 
 import pandas as pd 
@@ -24,6 +25,15 @@ driver = Firefox(options=options)
 # Set an implicit wait of 5 seconds to allow time for elements to appear before throwing an exception
 driver.implicitly_wait(5)
 
+urls = set()
+urlsFileName = os.path.join("htmlpages", "urls.txt")
+
+def getFileName(url):
+    string_bytes = url.encode("ascii") 
+    
+    base64_bytes = base64.b64encode(string_bytes) 
+    base64_string = base64_bytes.decode("ascii")
+    return base64_string
 def get_all_website_links(url):
     links = set()
     urls_queue = set([url])
@@ -41,15 +51,17 @@ def get_all_website_links(url):
                 articlehead = article.find_element(By.CSS_SELECTOR, "h1[class*='article'")
                 articlebody = article.find_element(By.CSS_SELECTOR, "div[class*='article-body'")
                 article_json = {}
-                article_json["source"] = current_url
+
+                urls.add(current_url)
+                #article_json["source"] = current_url
                 article_json["title"] = articlehead.text
                 article_json["body"] = articlebody.text
                
-                filename = hashlib.md5(current_url.encode()).hexdigest() + ".json"
+                filename = getFileName(current_url) + ".json"
                 n=os.path.join("htmlpages", "knowledge", "official",filename)
                 with open(n, 'w') as f:
                     json.dump(article_json, f)
-                json_data = json.dumps(article_json)             
+                json_data = json.dumps(article_json)            
             except NoSuchElementException:
                 print("No article found in this webpage.")
 
@@ -75,4 +87,6 @@ def get_all_website_links(url):
     return links
 
 links = get_all_website_links("https://support.medirecords.com/hc/en-us")
-print(links)
+#print(links)
+with open(urlsFileName,'w') as f:
+   f.write(str(urls))

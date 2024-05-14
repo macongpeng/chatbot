@@ -1,0 +1,1 @@
+{"title": "Medicare Error 9632", "body": "    9632 : Duplicate of service already paid. If not duplicate resubmit with appropriate indication. This type of error code comes up if there was more than one service performed for the client on the same day with the same item number and the same practitioner."}
