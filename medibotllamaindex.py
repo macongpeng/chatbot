@@ -33,8 +33,8 @@ from flask_cors import CORS
 #logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 #logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
 
-pinecone_client = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
-pinecone_index = pinecone_client.Index("docchat")
+#pinecone_client = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
+#pinecone_index = pinecone_client.Index("docchat")
 
 
 # create the sentence window node parser w/ default settings
@@ -72,12 +72,12 @@ documents = SimpleDirectoryReader("htmlpages/knowledge/", recursive=True).load_d
 # Transform chunks into numerical vectors using the embedding model
 #index = VectorStoreIndex.from_documents(documents)
 # Create a PineconeVectorStore using the specified pinecone_index
-vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
+#vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
 
 # Create a StorageContext using the created PineconeVectorStore
-storage_context = StorageContext.from_defaults(
-    vector_store=vector_store
-)
+#storage_context = StorageContext.from_defaults(
+#    vector_store=vector_store
+#)
 
 # Use the chunks of documents and the storage_context to create the index
 #index = VectorStoreIndex.from_documents(
@@ -102,6 +102,7 @@ template = (
     "Given this information, please answer the question: {query_str}\n"
     "Don't give an answer unless it is supported by the context above.\n"
     "Provide all urls of the context where the answer is found.\n"
+    "Use the file name of the context as the url.\n"
 )
 
 qa_template = PromptTemplate(template)
