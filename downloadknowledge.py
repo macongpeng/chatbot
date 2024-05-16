@@ -57,7 +57,7 @@ def get_all_website_links(url):
                 article_json["title"] = articlehead.text
                 article_json["body"] = articlebody.text
                
-                filename = getFileName(current_url) + ".json"
+                filename = getFileName(current_url)
                 n=os.path.join("htmlpages", "knowledge", "official",filename)
                 with open(n, 'w') as f:
                     json.dump(article_json, f)

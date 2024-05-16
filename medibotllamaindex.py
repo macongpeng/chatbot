@@ -1,9 +1,9 @@
 import os
+import base64 
+import binascii
 from llama_index.llms.bedrock import Bedrock
 from llama_index.embeddings.bedrock import BedrockEmbedding
-from llama_index.core import Settings, StorageContext, VectorStoreIndex, SimpleDirectoryReader, QueryBundle
-from pinecone import Pinecone
-from llama_index.vector_stores.pinecone import PineconeVectorStore
+from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader, QueryBundle
 from llama_index.core.schema import MetadataMode
 
 #from llama_index.core import PromptTemplate
@@ -12,11 +12,7 @@ from llama_index.core.prompts import PromptTemplate
 
 from llama_index.core.node_parser import SentenceWindowNodeParser
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.core.node_parser import JSONNodeParser
-from llama_index.core import Settings
-from llama_index.core import SimpleDirectoryReader
-from llama_index.core import VectorStoreIndex
-from llama_index.core.response.notebook_utils import display_source_node
+#from llama_index.core.node_parser import JSONNodeParser
 from llama_index.postprocessor.rankgpt_rerank import RankGPTRerank
 
 
@@ -60,14 +56,30 @@ embed_model = BedrockEmbedding(
     )
 Settings.llm =llm
 Settings.embed_model = embed_model
-Settings.node_parser = SentenceSplitter(chunk_size=200, chunk_overlap=10)
+Settings.node_parser = SentenceSplitter(chunk_size=250, chunk_overlap=10)
 #JSONNodeParser()
 #SentenceSplitter(chunk_size=200, chunk_overlap=10)
 
 #JSONNodeParser()
 #Settings.chunk_size = 512
-#
-documents = SimpleDirectoryReader("htmlpages/knowledge/", recursive=True).load_data()
+
+def decodefilename(filepath):
+    name = os.path.basename(filepath)
+    #print(name)
+    try:
+        filenamebase64_bytes = name.encode("ascii") 
+    
+        filename_bytes = base64.b64decode(filenamebase64_bytes) 
+        decodedfilename = filename_bytes.decode("ascii")
+        return decodedfilename
+    except (binascii.Error, UnicodeDecodeError) as error:
+        return name
+
+filename_fn = lambda filename: {"file_name": decodefilename(filename)}
+documents = SimpleDirectoryReader(
+    "htmlpages/knowledge/",
+    file_metadata=filename_fn,
+    recursive=True).load_data()
 
 # Transform chunks into numerical vectors using the embedding model
 #index = VectorStoreIndex.from_documents(documents)
@@ -102,7 +114,7 @@ template = (
     "Given this information, please answer the question: {query_str}\n"
     "Don't give an answer unless it is supported by the context above.\n"
     "Provide all urls of the context where the answer is found.\n"
-    "Use the file name of the context as the url.\n"
+    "The file_name is base64 encoded, decode it by using base64 before return as the references.\n"
 )
 
 qa_template = PromptTemplate(template)
@@ -116,7 +128,7 @@ def getQueryResult(query):
     ranked_nodes = reranker._postprocess_nodes(nodes, query_bundle = query_bundle)
     # Retrieve the context from the model
     context_list = [n.get_content(metadata_mode=MetadataMode.ALL) for n in ranked_nodes]
-    print("\n\n".join(context_list))
+    #print("\n\n".join(context_list))
     prompt = qa_template.format(context_str="\n\n".join(context_list), query_str=query)
 
     # Generate the response 
