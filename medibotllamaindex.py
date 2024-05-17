@@ -12,7 +12,6 @@ from llama_index.core.prompts import PromptTemplate
 
 from llama_index.core.node_parser import SentenceWindowNodeParser
 from llama_index.core.node_parser import SentenceSplitter
-#from llama_index.core.node_parser import JSONNodeParser
 from llama_index.postprocessor.rankgpt_rerank import RankGPTRerank
 
 
@@ -23,15 +22,6 @@ from flask import Flask, request, Response
 
 from waitress import serve
 from flask_cors import CORS
-#import logging
-#import sys
-
-#logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-#logging.getLogger().addHandler(logging.StreamHandler(stream=sys.stdout))
-
-#pinecone_client = Pinecone(api_key=os.environ["PINECONE_API_KEY"])
-#pinecone_index = pinecone_client.Index("docchat")
-
 
 # create the sentence window node parser w/ default settings
 node_parser = SentenceWindowNodeParser.from_defaults(
@@ -57,11 +47,6 @@ embed_model = BedrockEmbedding(
 Settings.llm =llm
 Settings.embed_model = embed_model
 Settings.node_parser = SentenceSplitter(chunk_size=250, chunk_overlap=10)
-#JSONNodeParser()
-#SentenceSplitter(chunk_size=200, chunk_overlap=10)
-
-#JSONNodeParser()
-#Settings.chunk_size = 512
 
 def decodefilename(filepath):
     name = os.path.basename(filepath)
@@ -81,27 +66,11 @@ documents = SimpleDirectoryReader(
     file_metadata=filename_fn,
     recursive=True).load_data()
 
-# Transform chunks into numerical vectors using the embedding model
-#index = VectorStoreIndex.from_documents(documents)
-# Create a PineconeVectorStore using the specified pinecone_index
-#vector_store = PineconeVectorStore(pinecone_index=pinecone_index)
-
-# Create a StorageContext using the created PineconeVectorStore
-#storage_context = StorageContext.from_defaults(
-#    vector_store=vector_store
-#)
-
-# Use the chunks of documents and the storage_context to create the index
-#index = VectorStoreIndex.from_documents(
-#    documents, 
-#    storage_context=storage_context
-#)
-
 index = VectorStoreIndex.from_documents(documents)
-retriever = index.as_retriever(similarity_top_k=5, verbose=True)
+retriever = index.as_retriever(similarity_top_k=3, verbose=True)
 
 reranker = RankGPTRerank(
-    top_n = 5,
+    top_n = 3,
     llm = llm,
 )
 
@@ -113,6 +82,11 @@ template = (
     "\n---------------------\n"
     "Given this information, please answer the question: {query_str}\n"
     "Don't give an answer unless it is supported by the context above.\n"
+    "Answer the question as truthfully as possible strictly using only the provided context.\n"
+    "If the answer is not contained within the context and chat history, just reply 'I don\'t know' directly.\n"
+    "Skip any preamble text and reasoning and give just the answer.\n"
+    "Do not mention what context states, just answer the question.\n"
+    "Do not proviide a summary of the context and the question.\n"
     "Provide all urls of the context where the answer is found.\n"
     "The file_name is base64 encoded, decode it by using base64 before return as the references.\n"
 )
@@ -122,13 +96,10 @@ qa_template = PromptTemplate(template)
 def getQueryResult(query):
     # display source for debug purpose
     nodes = retriever.retrieve(query)
-    #pre_context_list = [n.get_content(metadata_mode=MetadataMode.ALL) for n in nodes]
-    #print("\n\n".join(pre_context_list))
     query_bundle = QueryBundle(query_str=query)
     ranked_nodes = reranker._postprocess_nodes(nodes, query_bundle = query_bundle)
     # Retrieve the context from the model
     context_list = [n.get_content(metadata_mode=MetadataMode.ALL) for n in ranked_nodes]
-    #print("\n\n".join(context_list))
     prompt = qa_template.format(context_str="\n\n".join(context_list), query_str=query)
 
     # Generate the response 
