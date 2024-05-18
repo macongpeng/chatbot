@@ -79,16 +79,15 @@ template = (
 "We have provided context information below. \n"
     "---------------------\n"
     "{context_str}"
-    "\n---------------------\n"
-    "Given this information, please answer the question: {query_str}\n"
     "Don't give an answer unless it is supported by the context above.\n"
     "Answer the question as truthfully as possible strictly using only the provided context.\n"
     "If the answer is not contained within the context and chat history, just reply 'I don\'t know' directly.\n"
     "Skip any preamble text and reasoning and give just the answer.\n"
     "Do not mention what context states, just answer the question.\n"
     "Do not proviide a summary of the context and the question.\n"
-    "Provide all urls of the context where the answer is found.\n"
-    "The file_name is base64 encoded, decode it by using base64 before return as the references.\n"
+    "Provide the file_names of the context as references where the answer is found.\n"   
+    "\n---------------------\n"
+    "Given Above information, please answer the question: {query_str}\n"
 )
 
 qa_template = PromptTemplate(template)
@@ -100,8 +99,10 @@ def getQueryResult(query):
     ranked_nodes = reranker._postprocess_nodes(nodes, query_bundle = query_bundle)
     # Retrieve the context from the model
     context_list = [n.get_content(metadata_mode=MetadataMode.ALL) for n in ranked_nodes]
+    #print(context_list)
     prompt = qa_template.format(context_str="\n\n".join(context_list), query_str=query)
 
+    print(prompt)
     # Generate the response 
     response = llm.complete(prompt)
     return str(response)
