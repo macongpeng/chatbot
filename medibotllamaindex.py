@@ -112,14 +112,11 @@ CORS(app)
 
 cache = {}
 
-@app.post('/medibot/chat')
-def on_get_chat():
+def do_query(usermessage) -> str:
+    """
+    query llm for the given usermessage, return result as a json str
+    """
     key = 'get_chat'
-    req = request.get_json()
-    usermessage = req.get('usermessage', '')
-    if not usermessage:
-        return Response(json.dumps({"error": "Usermessage not provided"}), status=400, mimetype='application/json')
-
     args_string = key+"{'usermessage': '" + usermessage + "}"
     # Use hashlib to create a hash of the query string for a unique and consistent cache key
     key_hash = hashlib.md5(args_string.encode('utf-8')).hexdigest()
@@ -131,7 +128,28 @@ def on_get_chat():
     res = {}
     res["data"] = data
     res_json = json.dumps(res)
+    return res_json
+
+@app.post('/medibot/chat')
+def on_get_chat():
+    req = request.get_json()
+    usermessage = req.get('usermessage', '')
+    if not usermessage:
+        return Response(json.dumps({"error": "Usermessage not provided"}), status=400, mimetype='application/json')
+
+    res_json = do_query(usermessage)
     return Response(response=res_json, status=201, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
+
+@app.get('/medibot/chat')
+def on_chat():
+    """
+    make the chatbot accessible from broswer directly
+    """
+    usermessage = request.args.get('usermessage')
+    if not usermessage:
+        return Response(json.dumps({"error": "Usermessage not provided"}), status=400, mimetype='application/json')
+    res_json = do_query(usermessage)
+    return Response(response=res_json, status=201, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})    
 
 @app.get('/health/liveness')
 def on_get_liveness():
