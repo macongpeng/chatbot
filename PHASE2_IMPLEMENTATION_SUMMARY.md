@@ -132,6 +132,10 @@ User Query → Medical Expansion → Intent Detection → Hybrid Search → Smar
 - **Status:** Ready for production deployment
 - **Compatibility:** Fully compatible with monthly refresh workflow
 
+### Prerequisites
+- **AWS Access:** Run `/Users/macyang/Dev/Projects/assume-role.sh` before testing or running the chatbot
+- **Bedrock Access:** Requires AWS Bedrock permissions for Claude model
+
 ### Key Configuration
 - **Document Categories:** 8 categories automatically detected
 - **Content Types:** 4 types for intelligent matching
