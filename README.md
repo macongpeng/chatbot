@@ -59,48 +59,78 @@ python3 downloadknowledge.py
 
 ## 📁 Project Structure
 
+**Organized Architecture** - Clean separation of concerns for maintainability:
+
 ```
 chatbot/
-├── 📖 README.md                      # This overview
-├── ⚙️  requirements.txt               # Python dependencies  
+├── 📖 README.md                      # Project overview & quick start
+├── ⚙️  requirements.txt               # Python dependencies
+├── 🔧 .gitignore                     # Version control exclusions  
 │
 ├── src/                              # 🚀 Core Production Code
 │   ├── medibotllamaindex.py         # Main chatbot service (Port 8080)
 │   └── downloadknowledge.py         # Knowledge base downloader
 │
-├── ui/                              # 🌐 Web Interface  
-│   ├── index.html                   # Chatbot UI
-│   ├── style.css                    # Professional styling
-│   ├── script.js                    # Frontend logic
-│   └── README.md                    # UI setup guide
+├── ui/                              # 🌐 Web Interface Package
+│   ├── index.html                   # Chatbot UI with Phase 2A+2B branding
+│   ├── style.css                    # Professional medical styling
+│   ├── script.js                    # Full-featured chat functionality
+│   └── README.md                    # UI setup & testing guide
 │
-├── docs/                            # 📚 Complete Documentation
-│   ├── README.md                    # Documentation index
-│   ├── PHASE2_IMPLEMENTATION_SUMMARY.md  # Technical deep dive
-│   ├── README_PHASE2.md             # Quick reference
-│   ├── DOWNLOAD_SCRIPT_FIX_SUMMARY.md    # Infrastructure setup
-│   └── UI_TESTING_GUIDE.md          # End-to-end testing
+├── docs/                            # 📚 Complete Documentation Suite
+│   ├── README.md                    # Documentation index & navigation
+│   ├── REORGANIZATION_PLAN.md       # Folder restructure documentation
+│   ├── PHASE2_IMPLEMENTATION_SUMMARY.md  # Technical implementation details
+│   ├── README_PHASE2.md             # Phase 2A+2B quick reference
+│   ├── DOWNLOAD_SCRIPT_FIX_SUMMARY.md    # Infrastructure & setup guide
+│   ├── UI_TESTING_GUIDE.md          # End-to-end testing procedures
+│   └── CLAUDE.md                    # AI assistant integration guide
 │
-├── tests/                           # 🧪 Testing Suite
-│   ├── scripts/                     # Test execution scripts
-│   ├── results/                     # Performance results
-│   └── README.md                    # Testing guide
+├── tests/                           # 🧪 Comprehensive Testing Suite
+│   ├── scripts/                     # Test execution & automation scripts
+│   ├── results/                     # Performance results & JSON reports
+│   └── README.md                    # Testing methodology & procedures
 │
 ├── data/                            # 📊 Knowledge Base (gitignored)
-│   └── htmlpages/                   # Fresh content (326 documents)
+│   └── htmlpages/                   # Fresh scraped content (326 documents)
+│       ├── urls.txt                 # Discovered URLs index
+│       └── knowledge/official/      # Base64-encoded article files
 │
-├── archive/                         # 📜 Historical files
-└── scripts/                        # 🔧 Utility scripts
+├── archive/                         # 📜 Historical & legacy files
+└── scripts/                        # 🔧 Development utility scripts
 ```
+
+### **Architecture Benefits**
+
+- **🎯 Clear Separation**: Production code, UI, docs, and tests in dedicated folders
+- **🚀 Easy Deployment**: All production files in `src/` directory
+- **🌐 Standalone UI**: Complete web interface package in `ui/`
+- **📚 Comprehensive Docs**: Centralized documentation with navigation index
+- **🧪 Organized Testing**: Structured test suite with scripts and results
+- **📊 Clean Data**: Knowledge base separated with proper gitignore
+- **🔧 Maintainable**: Logical organization supports team development
 
 ---
 
 ## 📞 Support & Documentation
 
-- **📚 Complete Docs**: See `docs/README.md` for full documentation index
-- **🧪 Testing Guide**: `docs/UI_TESTING_GUIDE.md` for end-to-end validation
-- **🔧 Technical Details**: `docs/PHASE2_IMPLEMENTATION_SUMMARY.md` for implementation
-- **🚨 Troubleshooting**: Health checks via `curl http://localhost:8080/health/liveness`
+### **📚 Documentation Navigation**
+- **📋 Documentation Index**: `docs/README.md` - Complete navigation guide
+- **🔄 Folder Restructure**: `docs/REORGANIZATION_PLAN.md` - Architecture changes
+- **🧪 Testing Guide**: `docs/UI_TESTING_GUIDE.md` - End-to-end validation
+- **🔧 Technical Details**: `docs/PHASE2_IMPLEMENTATION_SUMMARY.md` - Implementation deep dive
+- **⚡ Phase 2 Reference**: `docs/README_PHASE2.md` - Quick feature overview
+
+### **🚀 Getting Started**
+- **Backend Setup**: Start from `src/` directory with Python service
+- **Frontend Access**: Launch UI from `ui/` directory via browser
+- **Content Refresh**: Use `src/downloadknowledge.py` for fresh data
+- **Health Check**: Monitor via `curl http://localhost:8080/health/liveness`
+
+### **🧪 Testing & Validation**
+- **Test Suite**: Run scripts from `tests/scripts/` directory
+- **Performance Results**: Review JSON reports in `tests/results/`
+- **UI Testing**: Follow comprehensive guide in `docs/UI_TESTING_GUIDE.md`
 
 ---
 

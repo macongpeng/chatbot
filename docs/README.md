@@ -117,15 +117,18 @@ Integration: Complete Data Pipeline
 ## 🔄 Maintenance & Updates
 
 ### **Monthly Content Refresh Process**
-1. Run: `python3 ../src/downloadknowledge.py`
-2. Restart: `python3 ../src/medibotllamaindex.py` 
-3. Validate: Use UI testing guide procedures
-4. Monitor: Performance should maintain 93.8% precision
+1. **Download**: `cd src && python3 downloadknowledge.py`
+2. **Restart**: `cd src && python3 medibotllamaindex.py` 
+3. **Test UI**: `cd ui && open index.html`
+4. **Validate**: Follow `UI_TESTING_GUIDE.md` procedures
+5. **Monitor**: Performance should maintain 93.8% precision
 
 ### **System Monitoring**
 - **Health Checks**: `curl http://localhost:8080/health/liveness`
+- **Debug Endpoint**: `curl "http://localhost:8080/debug/search/your%20query" | jq .`
 - **Performance**: Monitor response times (<2s average)
 - **Content**: Verify 326+ documents loaded in startup logs
+- **UI Status**: Check connection indicator in web interface
 
 ---
 
