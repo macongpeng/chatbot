@@ -53,5 +53,5 @@ credentials
 *.log
 
 # Knowledge base data files (refreshed monthly via downloadknowledge.py)
-htmlpages/knowledge/official/
-htmlpages/urls.txt
+data/htmlpages/knowledge/official/
+data/htmlpages/urls.txt
