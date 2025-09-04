@@ -11,3 +11,10 @@ requests
 selenium
 pandas
 flask-cors
+
+# Additional dependencies for evaluation
+llama-index-evaluation
+langchain
+langchain-aws
+langchain-chroma
+langchain-community

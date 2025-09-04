@@ -1,111 +1,175 @@
+#!/usr/bin/env python3
+"""
+Hybrid Search LlamaIndex Implementation for MediRecords Chatbot
+Combines BM25 (keyword matching) + Vector Search (semantic similarity)
+Based on successful medibotbeflask_hybrid.py approach
+"""
+
 import os
 import base64 
 import binascii
-from llama_index.llms.bedrock import Bedrock
+from llama_index.llms.bedrock_converse import BedrockConverse
 from llama_index.embeddings.bedrock import BedrockEmbedding
 from llama_index.core import Settings, VectorStoreIndex, SimpleDirectoryReader, QueryBundle
 from llama_index.core.schema import MetadataMode
 
-#from llama_index.core import PromptTemplate
-from llama_index.core.prompts import PromptTemplate
-
-
-from llama_index.core.node_parser import SentenceWindowNodeParser
+# Hybrid search components
+from llama_index.retrievers.bm25 import BM25Retriever
+from llama_index.core.retrievers import QueryFusionRetriever
 from llama_index.core.node_parser import SentenceSplitter
-from llama_index.postprocessor.rankgpt_rerank import RankGPTRerank
+from llama_index.core.postprocessor import SimilarityPostprocessor
 
+from llama_index.core.prompts import PromptTemplate
 
 import json
 import hashlib
 
 from flask import Flask, request, Response
-
 from waitress import serve
 from flask_cors import CORS
 
-# create the sentence window node parser w/ default settings
-node_parser = SentenceWindowNodeParser.from_defaults(
-    window_size=5,
-    window_metadata_key="window",
-    original_text_metadata_key="original_text",
-)
-
-# Build llm models
-llm = Bedrock(
-    model="mistral.mixtral-8x7b-instruct-v0:1",
-    temperature=0,
-    timeout=60,
-    context_size=10000,
+# HYBRID OPTIMIZATION: Better models configuration
+llm = BedrockConverse(
+    model="anthropic.claude-3-haiku-20240307-v1:0",
+    temperature=0,  # More deterministic  
     max_tokens=2000,
+    region_name="ap-southeast-2"
 )
 
-#batch size=1000 takes 5 minutes 30 seconds to start
 embed_model = BedrockEmbedding(
-    #model = "amazon.titan-embed-text-v1",
-    model = "cohere.embed-english-v3",
-    )
-Settings.llm =llm
+    model_name="cohere.embed-english-v3",
+    region_name="ap-southeast-2"
+)
+
+Settings.llm = llm
 Settings.embed_model = embed_model
-Settings.node_parser = SentenceSplitter(chunk_size=250, chunk_overlap=10)
+
+# HYBRID OPTIMIZATION: Better chunking (from successful hybrid research)
+Settings.chunk_size = 800  # Larger chunks for complete instructions
+Settings.chunk_overlap = 100  # More overlap for context continuity
 
 def decodefilename(filepath):
+    """Decode base64 encoded filenames"""
     name = os.path.basename(filepath)
-    #print(name)
     try:
         filenamebase64_bytes = name.encode("ascii") 
-    
         filename_bytes = base64.b64decode(filenamebase64_bytes) 
         decodedfilename = filename_bytes.decode("ascii")
         return decodedfilename
     except (binascii.Error, UnicodeDecodeError) as error:
         return name
 
+# HYBRID OPTIMIZATION: Enhanced document loading with better metadata
+print("📚 Loading documents for hybrid search...")
 filename_fn = lambda filename: {"file_name": decodefilename(filename)}
 documents = SimpleDirectoryReader(
     "htmlpages/knowledge/",
     file_metadata=filename_fn,
-    recursive=True).load_data()
+    recursive=True
+).load_data()
 
-index = VectorStoreIndex.from_documents(documents)
-retriever = index.as_retriever(similarity_top_k=3, verbose=True)
+print(f"✅ Loaded {len(documents)} documents")
 
-reranker = RankGPTRerank(
-    top_n = 3,
-    llm = llm,
+# HYBRID OPTIMIZATION: Better node splitting  
+splitter = SentenceSplitter(
+    chunk_size=800,  # Match Settings
+    chunk_overlap=100,
 )
 
-# Build a prompt template to only provide answers based on the loaded documents 
+nodes = splitter.get_nodes_from_documents(documents)
+print(f"📄 Created {len(nodes)} nodes for hybrid search")
+
+# HYBRID COMPONENT 1: Create Vector Index (semantic search)
+print("🔍 Building vector index...")
+vector_index = VectorStoreIndex(nodes)
+vector_retriever = vector_index.as_retriever(similarity_top_k=6)  # More candidates
+
+# HYBRID COMPONENT 2: Create BM25 Retriever (keyword search) 
+print("📝 Building BM25 index...")
+bm25_retriever = BM25Retriever.from_defaults(
+    nodes=nodes,
+    similarity_top_k=6,  # More candidates
+)
+
+# HYBRID COMPONENT 3: Query Fusion Retriever (combining both approaches)
+print("🔄 Creating hybrid retriever...")
+hybrid_retriever = QueryFusionRetriever(
+    retrievers=[vector_retriever, bm25_retriever],
+    similarity_top_k=4,  # Final top_k after fusion
+    num_queries=1,  # Don't generate multiple query variations
+    mode="reciprocal_rerank",  # Use reciprocal rank fusion (RRF)
+    use_async=False,
+    verbose=False  # Set to True for debugging
+)
+
+# HYBRID COMPONENT 4: Query preprocessing (from successful approach)
+def preprocess_medical_query(query: str) -> str:
+    """Preprocess queries to improve hybrid search performance"""
+    query_lower = query.lower()
+    
+    if "appointment" in query_lower and "create" in query_lower:
+        return f"MediRecords {query} step-by-step tutorial instructions"
+    elif "medicare" in query_lower and ("billing" in query_lower or "claim" in query_lower):
+        return f"MediRecords {query} process workflow steps"
+    elif "patient" in query_lower and ("add" in query_lower or "new" in query_lower):
+        return f"MediRecords {query} registration procedure steps"
+    elif "sms" in query_lower and "reminder" in query_lower:
+        return f"MediRecords {query} configuration setup steps"
+    else:
+        return f"MediRecords {query} how-to guide"
+
+print("✅ Hybrid search system ready!")
+
+# Enhanced prompt for medical precision
 template = (
-"We have provided context information below. \n"
+    "We have provided context information below from MediRecords EMR system documentation.\n"
     "---------------------\n"
-    "{context_str}"
-    "Don't give an answer unless it is supported by the context above.\n"
-    "Answer the question as truthfully as possible strictly using only the provided context.\n"
-    "If the answer is not contained within the context and chat history, just reply 'I don\'t know' directly.\n"
-    "Skip any preamble text and reasoning and give just the answer.\n"
-    "Do not mention what context states, just answer the question.\n"
-    "Do not proviide a summary of the context and the question.\n"
-    "Provide the file_names of the context as references where the answer is found.\n"   
-    "\n---------------------\n"
-    "Given Above information, please answer the question: {query_str}\n"
+    "{context_str}\n"
+    "---------------------\n"
+    "Instructions:\n"
+    "- Focus on specific MediRecords functionality and features\n" 
+    "- Provide step-by-step procedures when available\n"
+    "- Use exact terminology from the system\n"
+    "- Don't give an answer unless it is supported by the context above\n"
+    "- Answer truthfully using only the provided context\n"
+    "- If the answer is not contained within the context, reply 'I don't know' directly\n"
+    "- Skip preamble text and reasoning, give just the answer\n"
+    "- Do not mention what context states, just answer the question\n"
+    "- Do not provide a summary of the context and question\n"
+    "- Provide file_names of the context as references where the answer is found\n"
+    "\nGiven the above information, please answer the question: {query_str}\n"
 )
 
 qa_template = PromptTemplate(template)
 
-def getQueryResult(query):
-    # display source for debug purpose
-    nodes = retriever.retrieve(query)
-    query_bundle = QueryBundle(query_str=query)
-    ranked_nodes = reranker._postprocess_nodes(nodes, query_bundle = query_bundle)
-    # Retrieve the context from the model
-    context_list = [n.get_content(metadata_mode=MetadataMode.ALL) for n in ranked_nodes]
-    #print(context_list)
-    prompt = qa_template.format(context_str="\n\n".join(context_list), query_str=query)
-
-    print(prompt)
-    # Generate the response 
-    response = llm.complete(prompt)
-    return str(response)
+def getQueryResult(query: str) -> str:
+    """Enhanced query function with hybrid retrieval and preprocessing"""
+    
+    # HYBRID ENHANCEMENT: Preprocess query for better results
+    processed_query = preprocess_medical_query(query)
+    
+    # HYBRID RETRIEVAL: Use fusion of BM25 + Vector search
+    nodes = hybrid_retriever.retrieve(processed_query)
+    
+    # Build context from hybrid results
+    context_str = ""
+    source_files = []
+    
+    for node in nodes:
+        context_str += node.node.text + "\n\n"
+        # Extract source file information
+        file_name = node.node.metadata.get('file_name', 'Unknown')
+        if file_name not in source_files:
+            source_files.append(file_name)
+    
+    # Format context with source information
+    context_str += f"\nSource files: {', '.join(source_files)}"
+    
+    # Generate response using enhanced template
+    formatted_prompt = qa_template.format(context_str=context_str, query_str=query)
+    response = llm.complete(formatted_prompt)
+    
+    return response.text
 
 app = Flask(__name__)
 CORS(app)
@@ -120,16 +184,16 @@ def on_get_chat():
     if not usermessage:
         return Response(json.dumps({"error": "Usermessage not provided"}), status=400, mimetype='application/json')
 
-    args_string = key+"{'usermessage': '" + usermessage + "}"
-    # Use hashlib to create a hash of the query string for a unique and consistent cache key
+    args_string = key + "{'usermessage': '" + usermessage + "}"
     key_hash = hashlib.md5(args_string.encode('utf-8')).hexdigest()
     data = cache.get(key_hash)
-    if (data is None):
+    
+    if data is None:
         response = getQueryResult(usermessage)
-        data=str(response)
+        data = str(response)
         cache[key_hash] = data
-    res = {}
-    res["data"] = data
+        
+    res = {"data": data}
     res_json = json.dumps(res)
     return Response(response=res_json, status=201, mimetype='application/json', headers={'Access-Control-Allow-Origin': '*'})
 
@@ -137,9 +201,44 @@ def on_get_chat():
 def on_get_liveness():
     return Response(response='OK', status=200)
 
-@app.get('/health/readiness')
-def on_get_rediness():
+@app.get('/health/readiness') 
+def on_get_readiness():
     return Response(response='OK', status=200)
 
+@app.get('/debug/search/<query>')
+def debug_hybrid_search(query):
+    """Debug endpoint to see hybrid search results"""
+    try:
+        processed_query = preprocess_medical_query(query)
+        nodes = hybrid_retriever.retrieve(processed_query)
+        
+        results = []
+        for i, node in enumerate(nodes):
+            results.append({
+                'rank': i + 1,
+                'content': node.node.text[:200] + "..." if len(node.node.text) > 200 else node.node.text,
+                'metadata': node.node.metadata,
+                'score': getattr(node, 'score', 'N/A')
+            })
+        
+        return Response(
+            response=json.dumps({
+                'original_query': query,
+                'processed_query': processed_query,
+                'hybrid_results': results
+            }, indent=2),
+            status=200,
+            mimetype='application/json'
+        )
+    except Exception as e:
+        return Response(
+            response=json.dumps({'error': str(e)}),
+            status=500,
+            mimetype='application/json'
+        )
+
 if __name__ == '__main__':
+    print("🚀 Starting MediRecords LlamaIndex Hybrid Search Chatbot")
+    print("🔍 Using BM25 + Vector Search for improved precision")
+    print("🌐 Visit http://localhost:8080/debug/search/<your_query> to test search")
     serve(app, host="0.0.0.0", port=8080)
